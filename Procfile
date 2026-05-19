@@ -1,0 +1,1 @@
+worker: python kasip_navigator_bot.py
