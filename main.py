@@ -515,6 +515,8 @@ async def start_ent(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         await query.message.reply_text(text, parse_mode="Markdown", reply_markup=markup)
 
+    return ENT_SUB1
+
 async def handle_ent_sub1(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -607,6 +609,8 @@ async def start_mbti(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         await query.message.reply_text(text, parse_mode="Markdown", reply_markup=markup)
 
+    return MBTI_Q
+
 async def ask_mbti_question(query, context):
     idx = context.user_data["mbti_q"]
     q = MBTI_QUESTIONS[idx]
@@ -698,6 +702,8 @@ async def start_holland(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         await query.message.reply_text(text, parse_mode="Markdown", reply_markup=markup)
 
+    return HOLLAND_Q
+
 async def ask_holland_question(query, context):
     idx = context.user_data["holland_q"]
     q = HOLLAND_QUESTIONS[idx]
@@ -786,32 +792,47 @@ async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # MAIN
 # ========================
 def main():
-    # Проверяем, подгрузился ли секретный токен из `.env`
     if not BOT_TOKEN:
         print("❌ Қате: Токен табылмады! .env файлын тексеріңіз.")
         return
 
     app = Application.builder().token(BOT_TOKEN).build()
 
-    app.add_handler(CommandHandler("start", start))
+    # ConversationHandler — боттың қай кезеңде тұрғанын бақылайды
+    conv_handler = ConversationHandler(
+        entry_points=[CommandHandler("start", start)],
+        states={
+            CHOOSING_TEST: [
+                CallbackQueryHandler(start_mbti, pattern="^test_mbti$"),
+                CallbackQueryHandler(start_holland, pattern="^test_holland$"),
+                CallbackQueryHandler(start_ent, pattern="^test_ent$"),
+                CallbackQueryHandler(restart, pattern="^restart$"),
+            ],
+            MBTI_Q: [
+                CallbackQueryHandler(handle_mbti_answer, pattern="^mbti_"),
+            ],
+            HOLLAND_Q: [
+                CallbackQueryHandler(handle_holland_answer, pattern="^holland_"),
+            ],
+            ENT_SUB1: [
+                CallbackQueryHandler(handle_ent_sub1, pattern="^ent1_"),
+            ],
+            ENT_SUB2: [
+                CallbackQueryHandler(handle_ent_sub2, pattern="^ent2_"),
+                CallbackQueryHandler(start_ent, pattern="^test_ent$"),
+            ],
+        },
+        fallbacks=[
+            CommandHandler("start", start),
+            CallbackQueryHandler(restart, pattern="^restart$"),
+        ],
+        allow_reentry=True,
+    )
 
-    # Басты мәзір
-    app.add_handler(CallbackQueryHandler(start_mbti, pattern="^test_mbti$"))
-    app.add_handler(CallbackQueryHandler(start_holland, pattern="^test_holland$"))
-    app.add_handler(CallbackQueryHandler(start_ent, pattern="^test_ent$"))
-    app.add_handler(CallbackQueryHandler(restart, pattern="^restart$"))
-
-    # MBTI Хэндлеры
-    app.add_handler(CallbackQueryHandler(handle_mbti_answer, pattern="^mbti_"))
-
-    # Голланд Хэндлеры
-    app.add_handler(CallbackQueryHandler(handle_holland_answer, pattern="^holland_"))
-
-    # ЕНТ Хэндлеры
-    app.add_handler(CallbackQueryHandler(handle_ent_sub1, pattern="^ent1_"))
-    app.add_handler(CallbackQueryHandler(handle_ent_sub2, pattern="^ent2_"))
+    app.add_handler(conv_handler)
 
     print("✅ Kasip Navigator боты іске қосылды!")
     app.run_polling()
 
 if __name__ == "__main__":
+    main()
